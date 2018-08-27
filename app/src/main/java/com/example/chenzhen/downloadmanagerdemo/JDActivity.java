@@ -128,7 +128,6 @@ public class JDActivity extends AppCompatActivity {
         request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_HIDDEN);
 
 
-
         //设置下载的路径
         request.setDestinationInExternalPublicDir(getExternalCacheDir().getPath(), name);
 
@@ -142,8 +141,9 @@ public class JDActivity extends AppCompatActivity {
         registerReceiver(receiver,
                 new IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE));
 
-    }
 
+        listenProgress(); // 开始监听下载进度
+    }
 
     //广播监听下载的各个状态
     private BroadcastReceiver receiver = new BroadcastReceiver() {
@@ -161,7 +161,7 @@ public class JDActivity extends AppCompatActivity {
         Cursor c = downloadManager.query(query);
         if (c.moveToFirst()) {
             int status = c.getInt(c.getColumnIndex(DownloadManager.COLUMN_STATUS));
-            listenProgress(); // 开始监听下载进度
+            Log.e("listenProgress"," --  " );
             switch (status) {
                 //下载暂停
                 case DownloadManager.STATUS_PAUSED:
@@ -197,21 +197,23 @@ public class JDActivity extends AppCompatActivity {
             task.cancel();
             task = null;
         }
+        Log.e("cancel"," --  ");
     }
     /***
      * 监视器 监听进度
      */
     Timer timer;
     TimerTask task;
+    DownloadProgressListener listener = new DownloadProgressListener() {
+        @Override
+        public void downloadProgress(float progressPercent) {
+            int progress = Math.round(progressPercent*100);
+            Log.e("downloadProgress round"," --  " + Math.round(progressPercent*100));
+            mProgressBar.setProgress(progress >= 90 ? 100 : progress);
+        }
+    };
+    DownloadManager.Query query = new DownloadManager.Query();
     void listenProgress(){
-        final DownloadProgressListener listener = new DownloadProgressListener() {
-            @Override
-            public void downloadProgress(float progressPercent) {
-                Log.e("downloadProgress"," --  " + progressPercent);
-                mProgressBar.setProgress(Math.round(progressPercent)*100);
-            }
-        };
-        final DownloadManager.Query query = new DownloadManager.Query();
         timer = new Timer("progress");
         task = new TimerTask() {
             @Override
@@ -219,7 +221,7 @@ public class JDActivity extends AppCompatActivity {
                 queryDownloadProgress(query,listener);
             }
         };
-        timer.schedule(task,0,800);
+        timer.schedule(task,0,800);// 每隔800ms查询一次
     }
 
     /***
@@ -235,7 +237,6 @@ public class JDActivity extends AppCompatActivity {
             Cursor cur = downloadManager.query(query);
             if (cur != null) {
                 if (cur.moveToFirst()) {
-
                     int currentSizeColumnIndex = cur.getColumnIndex(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR);
                     int totalSizeColumnIndex = cur.getColumnIndex(DownloadManager.COLUMN_TOTAL_SIZE_BYTES);
                     long currentSizeBytes = cur.getLong(currentSizeColumnIndex);
@@ -389,5 +390,8 @@ public class JDActivity extends AppCompatActivity {
             urlString = null;
         }
         super.onDestroy();
+        unregisterReceiver(receiver);
     }
+
+
 }
